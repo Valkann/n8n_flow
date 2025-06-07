@@ -1,0 +1,360 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "{VOTRE SERVEUR MASTODON}/api/v1/bookmarks",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "min_id",
+              "value": "={{ $json.min_id }}"
+            }
+          ]
+        },
+        "options": {
+          "lowercaseHeaders": true,
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1100,
+        200
+      ],
+      "id": "1a0c020e-8e4a-43ea-affb-01dbec81bdda",
+      "name": "HTTP Request",
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "wset0GXL1IPdfhJS",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst links = $input.first().json.headers.link;\nlet regexp = /(?:\\?|\\&)(?<key>[\\w]+)=(?<value>[\\w+,.-]+)/g;\nlet results = links.matchAll(regexp);\nfor (let match of results) {\n  console.log(match.groups.key);\n  let key = match.groups.key;\n  console.log(match.groups.value);\n  let value = match.groups.value;\n  $input.last().json[key] = value;\n }\n\n\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -660,
+        200
+      ],
+      "id": "bb98d8b2-3a94-4cb5-9347-d5eefeee6d6b",
+      "name": "Code",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "resource": "bookmark",
+        "operation": "create",
+        "collectionId": "=-1",
+        "link": "={{ $json.card.url }}",
+        "additionalFields": {
+          "pleaseParse": true,
+          "title": "={{ $json.card.title }}"
+        }
+      },
+      "type": "n8n-nodes-base.raindrop",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "3c2f7539-8241-4067-84c2-5417faacb3d5",
+      "name": "Raindrop",
+      "credentials": {
+        "raindropOAuth2Api": {
+          "id": "l1dJhIsqhWvUWcDw",
+          "name": "Raindrop account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "=body",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -440,
+        100
+      ],
+      "id": "52f70723-9de0-4dfe-accd-a80198f5ba44",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "10f21e21-f57e-49c1-94e0-7ea7d84dce24",
+              "leftValue": "={{ $json.card.url}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -220,
+        100
+      ],
+      "id": "be5debbf-e01a-4243-aeab-9231345f20de",
+      "name": "If"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1540,
+        100
+      ],
+      "id": "69952ee1-9744-42e4-9ac0-8f0cc605526c",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1540,
+        300
+      ],
+      "id": "e61395d9-1474-4959-9a76-bf05b35b6827",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "resource": "bookmark",
+        "operation": "create",
+        "collectionId": "=-1",
+        "link": "={{ $json.url }}",
+        "additionalFields": {
+          "pleaseParse": true,
+          "title": "={{ $json.account.username }}"
+        }
+      },
+      "type": "n8n-nodes-base.raindrop",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ],
+      "id": "7337aaeb-833d-4a95-bdda-f619eecaa8e2",
+      "name": "Raindrop1",
+      "credentials": {
+        "raindropOAuth2Api": {
+          "id": "l1dJhIsqhWvUWcDw",
+          "name": "Raindrop account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// initialize staticData object\nconst workflowStaticData = $getWorkflowStaticData('global');\n\n// initialize accessToken on staticData if it desn't exist yet\nif (!workflowStaticData.hasOwnProperty('min_id')) {\n  workflowStaticData.min_id = 0\n}\n\n\n\nreturn [\n  {\n      // data: $input.all(),\n      min_id: workflowStaticData.min_id,\n      // today: $today\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1320,
+        200
+      ],
+      "id": "790c5c2c-db4f-416a-aac0-52d0b99fd042",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflowStaticData = $getWorkflowStaticData('global');\n\n// get new access token\nworkflowStaticData.min_id = $input.first().json.min_id ;\n// set timestamp of new access token\n\nreturn [\n  {\n      // data: $input.all(),\n      accessToken: workflowStaticData.min_id,\n      // today: $today\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -440,
+        300
+      ],
+      "id": "cbbabfd5-a20c-4cc0-9679-6a4aa85604fd",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "25997115-4422-4d65-86aa-47c4ab3edb17",
+              "leftValue": "={{ $json.body }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "array",
+                "operation": "lengthGt",
+                "rightType": "number"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -880,
+        200
+      ],
+      "id": "1448321e-e33a-487e-8885-18fa8b3c1d9c",
+      "name": "If1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Raindrop",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Raindrop1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "",
+  "meta": {
+    "instanceId": "b5a155997dbc2be3a6aa76351ad1a54b9631c4ec8a46687fa6b9f4856a6dbdce"
+  },
+  "tags": []
+}
