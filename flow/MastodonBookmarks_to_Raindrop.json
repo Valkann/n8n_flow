@@ -42,7 +42,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst links = $input.first().json.headers.link;\nlet regexp = /(?:\\?|\\&)(?<key>[\\w]+)=(?<value>[\\w+,.-]+)/g;\nlet results = links.matchAll(regexp);\nfor (let match of results) {\n  console.log(match.groups.key);\n  let key = match.groups.key;\n  console.log(match.groups.value);\n  let value = match.groups.value;\n  $input.last().json[key] = value;\n }\n\n\n\nreturn $input.all();"
+        "jsCode": "
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
