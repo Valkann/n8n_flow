@@ -1,0 +1,6 @@
+- The Raindrop collection is set to ``-1`` as this is the index for the ``Unsorted`` collection.
+- Mastodon allows only 20 default values (40 max) to be retrieved in one call
+	- Result pagination uses ``min_id``. 
+	- The ``min_id`` is initialized to ``0``. 
+	- It is incremented each time with the new value.
+	- The variable is persisted from run to run of the flow 
