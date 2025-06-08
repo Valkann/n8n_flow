@@ -1,0 +1,376 @@
+{
+  "name": "Save Mastodon Bookmarks to Raindrop Automatically",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1540,
+        100
+      ],
+      "id": "4e0a9ee0-5cd6-4d27-8cc1-e9171f9d8bd1",
+      "name": "Allows manual testing of the workflow"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1540,
+        300
+      ],
+      "id": "f191c5e3-adf2-4e00-9ef2-76872dde02c6",
+      "name": "Triggers the workflow on a set interval"
+    },
+    {
+      "parameters": {
+        "jsCode": "// initialize staticData object\nconst workflowStaticData = $getWorkflowStaticData('global');\n\n// initialize accessToken on staticData if it desn't exist yet\nif (!workflowStaticData.hasOwnProperty('min_id')) {\n  workflowStaticData.min_id = 0\n}\n\n\n\nreturn [\n  {\n      // data: $input.all(),\n      min_id: workflowStaticData.min_id,\n      // today: $today\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1320,
+        200
+      ],
+      "id": "6f2bc516-7496-418e-bc71-2c83b4d2b9d5",
+      "name": "Retrieves the last processed min_id to avoid duplicates"
+    },
+    {
+      "parameters": {
+        "url": "{VOTRE SERVEUR MASTODON}/api/v1/bookmarks",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "min_id",
+              "value": "={{ $json.min_id }}"
+            }
+          ]
+        },
+        "options": {
+          "lowercaseHeaders": true,
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1100,
+        200
+      ],
+      "id": "a119babd-8305-4476-8a84-5285e1890dd8",
+      "name": "Makes authenticated request to Mastodon’s bookmarks API",
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "wset0GXL1IPdfhJS",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "25997115-4422-4d65-86aa-47c4ab3edb17",
+              "leftValue": "={{ $json.body }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "array",
+                "operation": "lengthGt",
+                "rightType": "number"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -880,
+        200
+      ],
+      "id": "f0b97bb2-2c35-42df-b0fb-9fecd01498ae",
+      "name": "Ensures the response has bookmarks before continuing"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst links = $input.first().json.headers.link;\nlet regexp = /(?:\\?|\\&)(?<key>[\\w]+)=(?<value>[\\w+,.-]+)/g;\nlet results = links.matchAll(regexp);\nfor (let match of results) {\n  console.log(match.groups.key);\n  let key = match.groups.key;\n  console.log(match.groups.value);\n  let value = match.groups.value;\n  $input.last().json[key] = value;\n }\n\n\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -660,
+        200
+      ],
+      "id": "a5b393c0-51ab-4422-a2d7-bf098b97b729",
+      "name": "Extracts pagination data (like next min_id) from HTTP headers",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "jsCode": "const workflowStaticData = $getWorkflowStaticData('global');\n\n// get new access token\nworkflowStaticData.min_id = $input.first().json.min_id ;\n// set timestamp of new access token\n\nreturn [\n  {\n      // data: $input.all(),\n      accessToken: workflowStaticData.min_id,\n      // today: $today\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -440,
+        300
+      ],
+      "id": "3117db2a-cc3f-45b8-94df-cb0290f18f87",
+      "name": "Saves the new min_id to workflow static data"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "=body",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -440,
+        100
+      ],
+      "id": "e7c0cfbb-a0be-47f2-9ff2-26955c0678c4",
+      "name": "Splits API response into individual bookmark items"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "10f21e21-f57e-49c1-94e0-7ea7d84dce24",
+              "leftValue": "={{ $json.card.url}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -220,
+        100
+      ],
+      "id": "813c1f01-2400-4e6c-a51a-1709bb2c27d3",
+      "name": "Filters out invalid or incomplete bookmark data"
+    },
+    {
+      "parameters": {
+        "resource": "bookmark",
+        "operation": "create",
+        "collectionId": "=-1",
+        "link": "={{ $json.card.url }}",
+        "additionalFields": {
+          "pleaseParse": true,
+          "title": "={{ $json.card.title }}"
+        }
+      },
+      "type": "n8n-nodes-base.raindrop",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e6620ed1-48c0-44ee-98de-d79bc1c801ab",
+      "name": "Saves valid bookmark using post metadata (e.g., title, card.url)",
+      "credentials": {
+        "raindropOAuth2Api": {
+          "id": "l1dJhIsqhWvUWcDw",
+          "name": "Raindrop account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "bookmark",
+        "operation": "create",
+        "collectionId": "=-1",
+        "link": "={{ $json.url }}",
+        "additionalFields": {
+          "pleaseParse": true,
+          "title": "={{ $json.account.username }}"
+        }
+      },
+      "type": "n8n-nodes-base.raindrop",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ],
+      "id": "1a5d6393-207d-443c-ab76-ffb10a93f143",
+      "name": "Saves bookmark using alternate fields if card data is missing",
+      "credentials": {
+        "raindropOAuth2Api": {
+          "id": "l1dJhIsqhWvUWcDw",
+          "name": "Raindrop account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## 🗂️ Sync Mastodon Bookmarks to Raindrop\n\nThis workflow fetches your latest bookmarks from Mastodon and saves them to Raindrop.io, allowing you to organize and access saved posts outside of Mastodon.\n\n🔧 Requirements:\n\n    A Mastodon access token with permission to read bookmarks\n\n    A Raindrop.io OAuth2 credential\n\n    Replace {VOTRE SERVEUR MASTODON} with your Mastodon server base URL (e.g., https://mastodon.social)\n\n    First run will default to min_id = 0, then it updates to fetch only new bookmarks\n\n🕒 Triggered on schedule or manually\n\n💡 Pagination data is extracted from HTTP headers to support future syncs without duplication.",
+        "height": 400,
+        "width": 780
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1800,
+        -380
+      ],
+      "id": "19213b61-9f95-445f-8f28-a5de7868988d",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Allows manual testing of the workflow": {
+      "main": [
+        [
+          {
+            "node": "Retrieves the last processed min_id to avoid duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Triggers the workflow on a set interval": {
+      "main": [
+        [
+          {
+            "node": "Retrieves the last processed min_id to avoid duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieves the last processed min_id to avoid duplicates": {
+      "main": [
+        [
+          {
+            "node": "Makes authenticated request to Mastodon’s bookmarks API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Makes authenticated request to Mastodon’s bookmarks API": {
+      "main": [
+        [
+          {
+            "node": "Ensures the response has bookmarks before continuing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensures the response has bookmarks before continuing": {
+      "main": [
+        [
+          {
+            "node": "Extracts pagination data (like next min_id) from HTTP headers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extracts pagination data (like next min_id) from HTTP headers": {
+      "main": [
+        [
+          {
+            "node": "Splits API response into individual bookmark items",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Saves the new min_id to workflow static data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Splits API response into individual bookmark items": {
+      "main": [
+        [
+          {
+            "node": "Filters out invalid or incomplete bookmark data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filters out invalid or incomplete bookmark data": {
+      "main": [
+        [
+          {
+            "node": "Saves valid bookmark using post metadata (e.g., title, card.url)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Saves bookmark using alternate fields if card data is missing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "208d09f1-9aab-41a0-a6b6-ad6bc10c450f",
+  "meta": {
+    "instanceId": "b5a155997dbc2be3a6aa76351ad1a54b9631c4ec8a46687fa6b9f4856a6dbdce"
+  },
+  "id": "CtgqZVTypq95HoSi",
+  "tags": []
+}
