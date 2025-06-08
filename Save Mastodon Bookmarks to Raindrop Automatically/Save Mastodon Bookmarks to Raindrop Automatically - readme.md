@@ -36,9 +36,7 @@ Mastodon users often bookmark posts they want to read or save for later, but the
 - You can extend the Code node to pull additional metadata like author, hashtags, or content excerpts.
 - Add an Email or Slack node after Raindrop to notify you of saved bookmarks.
 
-# todo
-Use color-coded sticky notes to explain:
-- Trigger type and timing
+## Todo
+
 - API credential setup
-- Output expectations (e.g., one item per post)
-Add a quick Loom video or link to a guide for easier onboarding.
+- Add a quick Loom video or link to a guide for easier onboarding.
