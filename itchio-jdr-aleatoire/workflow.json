@@ -1,0 +1,149 @@
+{
+  "name": "itch.io - JdR français aléatoire (RSS Read)",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://itch.io/physical-games/newest/lang-fr/tag-no-ai.xml",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "page",
+              "value": "1"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "python-requests/2.32.3"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          },
+          "pagination": {
+            "pagination": {
+              "parameters": {
+                "parameters": [
+                  {
+                    "name": "page",
+                    "value": "={{ $pageCount + 1 }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ $response.statusCode !== 200 || !String($response.body).includes('<item>') }}",
+              "limitPagesFetched": true,
+              "maxRequests": 48,
+              "requestInterval": 500
+            }
+          }
+        }
+      },
+      "name": "Récupérer les pages XML",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1104,
+        -224
+      ],
+      "id": "afc7a187-c5e7-4e13-bf6b-011a3df6602a",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "name": "XML vers JSON",
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        -880,
+        -224
+      ],
+      "id": "88d73307-5a46-4ad9-9104-a1f15fede1e1",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const games = [];\n\nfor (const page of $input.all()) {\n  let entries = page.json?.rss?.channel?.item;\n  if (!entries) continue;\n  if (!Array.isArray(entries)) entries = [entries];\n\n  for (const e of entries) {\n    games.push({\n      title: e.plainTitle,\n      link: e.link,\n      summary: e.description,\n      hashtags: '#JdR #itchio',\n    });\n  }\n}\n\nif (!games.length) return [];\n\nconst game = games[Math.floor(Math.random() * games.length)];\nreturn [{ json: game }];"
+      },
+      "name": "Choisir un jeu au hasard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -656,
+        -224
+      ],
+      "id": "d82d1c49-cd0f-4c7c-818f-581e4c7df98e"
+    },
+    {
+      "parameters": {},
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1328,
+        -224
+      ],
+      "id": "5500ac47-1f1f-47d4-84a8-0eb208b23649"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Récupérer les pages XML": {
+      "main": [
+        [
+          {
+            "node": "XML vers JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML vers JSON": {
+      "main": [
+        [
+          {
+            "node": "Choisir un jeu au hasard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Récupérer les pages XML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "d55dacb9-e790-4226-bb88-5d244f46ee7d",
+  "meta": {
+    "instanceId": "b5a155997dbc2be3a6aa76351ad1a54b9631c4ec8a46687fa6b9f4856a6dbdce"
+  },
+  "nodeGroups": [],
+  "id": "VUrpcTbs8WxdFtWY",
+  "tags": []
+}
