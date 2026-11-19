@@ -1,0 +1,684 @@
+{
+  "name": "Sync Mastodon bookmarks to Wallabag with duplicate check",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "### 1. Schedule & sync state",
+        "height": 230,
+        "width": 600,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        32,
+        416
+      ],
+      "id": "65fc04e4-ff62-458b-b0f7-625ae58fd0d6",
+      "name": "Group 1"
+    },
+    {
+      "parameters": {
+        "content": "### 2. Fetch bookmarks & read pagination",
+        "height": 230,
+        "width": 640,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        672,
+        416
+      ],
+      "id": "022423e9-1b0a-4474-a2e2-426a56a6fe9c",
+      "name": "Group 2"
+    },
+    {
+      "parameters": {
+        "content": "### 3. Split, check duplicates & save to Wallabag",
+        "height": 440,
+        "width": 1030,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1376,
+        208
+      ],
+      "id": "5ce4d0e5-c381-4f14-846a-5e441d018a71",
+      "name": "Group 3"
+    },
+    {
+      "parameters": {
+        "content": "## Mastodon bookmarks → Wallabag\nEvery 5 minutes, new Mastodon bookmarks are saved to Wallabag.\n\n- Remembers the last bookmark ID in a **Data Table** (no duplicates, no re-processing)\n- Skips URLs that **already exist** in Wallabag\n- Saves the link card when present, otherwise the first link of the toot, otherwise the toot itself\n\n⚠️ Requires the community node **n8n-nodes-wallabag** and n8n with **Data Tables**.",
+        "height": 380,
+        "width": 540,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "bebfc2d7-4778-4ddd-a6bc-356dbab063a8",
+      "name": "Overview"
+    },
+    {
+      "parameters": {
+        "content": "## Setup\n1. Install the community node `n8n-nodes-wallabag`\n2. Create a Mastodon access token with the `read:bookmarks` scope\n3. Add an **HTTP Bearer Auth** credential with this token → select it in *Fetch new bookmarks*\n4. Replace `YOUR_MASTODON_INSTANCE` in the *Fetch new bookmarks* URL\n5. Create a **Wallabag API** credential and select it in the 4 Wallabag nodes\n6. Create a Data Table `mastodon_sync_state` with 2 string columns: `source`, `min_id` → select it in *Get sync state* and *Save min_id*\n7. (Optional) Set `DEFAULT_MIN_ID` in *Prepare min_id* and test with *Execute workflow*, then activate",
+        "height": 380,
+        "width": 640,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        560,
+        0
+      ],
+      "id": "c5c11995-d636-454f-a634-606cef893bd4",
+      "name": "Setup"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "url": "={{ $('Has link card?').item.json.card.url }}",
+        "additionalFields": {
+          "authors": "={{ $('Has link card?').item.json.card.author_name }}",
+          "content": "={{ $('Has link card?').item.json.card.description }}",
+          "language": "={{ $('Has link card?').item.json.card.language }}",
+          "origin_url": "={{ $('Has link card?').item.json.url }}",
+          "published_at": "={{ $('Has link card?').item.json.card.published_at }}",
+          "title": "={{ $('Has link card?').item.json.card.title }}"
+        }
+      },
+      "type": "n8n-nodes-wallabag.wallabag",
+      "typeVersion": 1,
+      "position": [
+        2304,
+        288
+      ],
+      "id": "324a08e6-3cc1-4e45-986d-5471837d3caf",
+      "name": "Save link to Wallabag",
+      "notesInFlow": true,
+      "credentials": {
+        "wallabagApi": {
+          "id": "vVN4HRzXaUEkI2HS",
+          "name": "Wallabag account"
+        }
+      },
+      "notes": "Saves the card URL with title, author, language and the Mastodon post as origin_url."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b2b2b2b2-0000-4000-8000-000000000102",
+              "leftValue": "={{ $json.exists }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2080,
+        288
+      ],
+      "id": "8eae4353-2d20-4d19-a16f-2b7dd405bd67",
+      "name": "Already in Wallabag? (link)",
+      "notesInFlow": true,
+      "notes": "True = already saved, skip. False = save it."
+    },
+    {
+      "parameters": {
+        "operation": "exists",
+        "url": "={{ $json.card.url }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-wallabag.wallabag",
+      "typeVersion": 1,
+      "position": [
+        1856,
+        288
+      ],
+      "id": "a741a431-5d51-4ece-b1af-5403642d39d5",
+      "name": "Check exists (link)",
+      "notesInFlow": true,
+      "credentials": {
+        "wallabagApi": {
+          "id": "vVN4HRzXaUEkI2HS",
+          "name": "Wallabag account"
+        }
+      },
+      "notes": "Asks Wallabag whether the card URL is already saved."
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "url": "={{ $('Has link card?').item.json.content.match(/<a(?![^>]*class=\\\"mention hashtag\\\")[^>]*href=\\\"([^\\\"]*)\\\"/)?.at(1) || $('Has link card?').item.json.url }}",
+        "additionalFields": {
+          "authors": "={{ $('Has link card?').item.json.account.username }}",
+          "content": "={{ $('Has link card?').item.json.content }}",
+          "language": "={{ $('Has link card?').item.json.language }}",
+          "origin_url": "={{ $('Has link card?').item.json.url }}",
+          "published_at": "={{ $('Has link card?').item.json.created_at }}",
+          "title": "={{ $('Has link card?').item.json.account.username }}"
+        }
+      },
+      "type": "n8n-nodes-wallabag.wallabag",
+      "typeVersion": 1,
+      "position": [
+        2304,
+        480
+      ],
+      "id": "7f4d1a6b-8d40-44df-bf32-8d76f55a6960",
+      "name": "Save toot to Wallabag",
+      "notesInFlow": true,
+      "credentials": {
+        "wallabagApi": {
+          "id": "vVN4HRzXaUEkI2HS",
+          "name": "Wallabag account"
+        }
+      },
+      "notes": "Saves the first link found in the toot (or the toot itself) with the toot text as content."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "10f21e21-f57e-49c1-94e0-7ea7d84dce24",
+              "leftValue": "={{ $json.card.url}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1632,
+        384
+      ],
+      "id": "61109409-44d0-48d3-8cd8-d5ed5a7249e3",
+      "name": "Has link card?",
+      "notesInFlow": true,
+      "notes": "True: the post contains a link preview (card). False: plain toot."
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "mastodon_sync_state"
+        },
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "source",
+              "keyValue": "mastodon_bookmarks"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "source": "mastodon_bookmarks",
+            "min_id": "={{ $json.min_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "min_id",
+              "displayName": "min_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        1408,
+        576
+      ],
+      "id": "2ab2daa1-65ef-439f-bdde-aaae2d1a787d",
+      "name": "Save min_id",
+      "notesInFlow": true,
+      "notes": "Upserts the new min_id in the Data Table so the next run continues from there."
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "=body",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1408,
+        384
+      ],
+      "id": "0ce846b9-a1ce-4bba-9d9f-7cb3900bf308",
+      "name": "Split bookmarks",
+      "notesInFlow": true,
+      "notes": "One item per bookmarked post."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrait les parametres de pagination (min_id, max_id, ...) du header Link\n// et les ajoute directement sur l'item courant.\nconst links = $input.first().json.headers.link;\nlet regexp = /(?:\\?|\\&)(?<key>[\\w]+)=(?<value>[\\w+,.-]+)/g;\nlet results = links.matchAll(regexp);\nfor (let match of results) {\n  let key = match.groups.key;\n  let value = match.groups.value;\n  $input.last().json[key] = value;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        480
+      ],
+      "id": "25495227-4900-478e-a32d-177f230bd8b4",
+      "name": "Parse pagination header",
+      "alwaysOutputData": false,
+      "notesInFlow": true,
+      "notes": "Extracts min_id / max_id from the `Link` header and adds them to the item."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b2b2b2b2-0000-4000-8000-000000000202",
+              "leftValue": "={{ $json.exists }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2080,
+        480
+      ],
+      "id": "58c3cc77-5b5c-4e2a-b828-2533eb61b061",
+      "name": "Already in Wallabag? (toot)",
+      "notesInFlow": true,
+      "notes": "True = already saved, skip. False = save it."
+    },
+    {
+      "parameters": {
+        "operation": "exists",
+        "url": "={{ $json.content.match(/<a(?![^>]*class=\"mention hashtag\")[^>]*href=\"([^\"]*)\"/)?.at(1) || $json.url }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-wallabag.wallabag",
+      "typeVersion": 1,
+      "position": [
+        1856,
+        480
+      ],
+      "id": "78981884-35e7-4245-a8a5-7cd316fa40b6",
+      "name": "Check exists (toot)",
+      "notesInFlow": true,
+      "credentials": {
+        "wallabagApi": {
+          "id": "vVN4HRzXaUEkI2HS",
+          "name": "Wallabag account"
+        }
+      },
+      "notes": "Uses the first non-hashtag, non-mention link in the toot, or the toot URL."
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        64,
+        480
+      ],
+      "id": "cea0641d-3aa3-48f1-9cd6-d6b0b1e2316c",
+      "name": "Every 5 minutes",
+      "notesInFlow": true,
+      "notes": "Runs the sync every 5 minutes. Change the interval to your needs."
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "mastodon_sync_state"
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1,
+      "position": [
+        288,
+        480
+      ],
+      "id": "3de6fd3d-72b8-49d5-94c2-6bfd2dceee32",
+      "name": "Get sync state",
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "notes": "Reads the last processed bookmark ID (min_id) from the Data Table `mastodon_sync_state`."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Table mastodon_sync_state : une seule ligne attendue.\n// Si la table est vide (premier run), on repart de la valeur par defaut.\nconst DEFAULT_MIN_ID = 0; // 0 = start from your oldest bookmarks\nconst items = $input.all();\n\nlet minId = DEFAULT_MIN_ID;\nif (items.length > 0 && items[0].json && items[0].json.min_id !== undefined && items[0].json.min_id !== null && items[0].json.min_id !== '') {\n  minId = items[0].json.min_id;\n}\n\nreturn [\n  { json: { min_id: minId } }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        480
+      ],
+      "id": "eef4680b-1cd0-48e3-bf30-ff218163c884",
+      "name": "Prepare min_id",
+      "notesInFlow": true,
+      "notes": "Falls back to DEFAULT_MIN_ID on first run (table empty). 0 = start from your oldest bookmarks."
+    },
+    {
+      "parameters": {
+        "url": "https://YOUR_MASTODON_INSTANCE/api/v1/bookmarks",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "min_id",
+              "value": "={{ $json.min_id }}"
+            }
+          ]
+        },
+        "options": {
+          "lowercaseHeaders": true,
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        736,
+        480
+      ],
+      "id": "257f53d0-9e5c-46cd-9b84-901f06f8d003",
+      "name": "Fetch new bookmarks",
+      "alwaysOutputData": true,
+      "notesInFlow": true,
+      "notes": "GET /api/v1/bookmarks?min_id=... Full response is kept to read the `Link` header."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "25997115-4422-4d65-86aa-47c4ab3edb17",
+              "leftValue": "={{ $json.body }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "array",
+                "operation": "lengthGt",
+                "rightType": "number"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        960,
+        480
+      ],
+      "id": "fb59c324-1690-4048-8642-1a42186e0a11",
+      "name": "Any new bookmarks?",
+      "notesInFlow": true,
+      "notes": "Stops the run when the API returns an empty list."
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Already in Wallabag? (link)": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Save link to Wallabag",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check exists (link)": {
+      "main": [
+        [
+          {
+            "node": "Already in Wallabag? (link)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has link card?": {
+      "main": [
+        [
+          {
+            "node": "Check exists (link)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check exists (toot)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split bookmarks": {
+      "main": [
+        [
+          {
+            "node": "Has link card?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse pagination header": {
+      "main": [
+        [
+          {
+            "node": "Save min_id",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Split bookmarks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already in Wallabag? (toot)": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Save toot to Wallabag",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check exists (toot)": {
+      "main": [
+        [
+          {
+            "node": "Already in Wallabag? (toot)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every 5 minutes": {
+      "main": [
+        [
+          {
+            "node": "Get sync state",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get sync state": {
+      "main": [
+        [
+          {
+            "node": "Prepare min_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare min_id": {
+      "main": [
+        [
+          {
+            "node": "Fetch new bookmarks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch new bookmarks": {
+      "main": [
+        [
+          {
+            "node": "Any new bookmarks?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any new bookmarks?": {
+      "main": [
+        [
+          {
+            "node": "Parse pagination header",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "32a1b931-46e1-4795-8fd2-216e574d139e",
+  "meta": {
+    "instanceId": "b5a155997dbc2be3a6aa76351ad1a54b9631c4ec8a46687fa6b9f4856a6dbdce"
+  },
+  "nodeGroups": [],
+  "id": "CtlzQJO2pK5HoWjb",
+  "tags": []
+}
